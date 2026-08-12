@@ -26,7 +26,12 @@ async def upload_file(file: UploadFile = File(...)):
         "session_id": session_id,
         "file_type": result.file_type,
         "sheets": [
-            {"name": s.name, "columns": [c.name for c in s.columns], "rows": s.row_count}
+            {
+                "name": s.name,
+                "columns": [c.name for c in s.columns],
+                "row_count": s.row_count,
+                "data": s.records[:100],  # 前100行用于前端预览
+            }
             for s in result.sheets
         ],
     }
