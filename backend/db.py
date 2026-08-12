@@ -33,16 +33,18 @@ class DBManager:
     def insert_rows(self, table_name: str, rows: list[dict]) -> None:
         if not rows: return
         columns = rows[0].keys()
-        sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ("
+        cols = [f"`{c}`" for c in columns]
+        sql = f"INSERT INTO {table_name} ({', '.join(cols)}) VALUES ("
         sql += ", ".join(["%s"] * len(columns))
         sql += ")"
         self.cursor.executemany(sql, [tuple(row.values()) for row in rows])
         self.conn.commit()
 
     def query(self, table_name: str, columns: list[str] | None = None) -> list[dict]:
-        sql = f"SELECT {', '.join(columns) if columns else '*'} FROM {table_name}"
+        cols_str = ', '.join(f'`{c}`' for c in columns) if columns else '*'
+        sql = f"SELECT {cols_str} FROM {table_name}"
         self.cursor.execute(sql)
-        return self.cursor.fetchall()
+        return list(self.cursor.fetchall())
     
     def drop_table(self, table_name: str) -> None:
         sql = f"DROP TABLE IF EXISTS {table_name}"
@@ -50,5 +52,8 @@ class DBManager:
     def close(self) -> None:
         self.conn.commit()
         self.conn.close()
-
+    def execute(self, sql: str) -> list[dict]:
+        """执行 SELECT 语句，返回结果（仅供 guard 校验后的 SQL 使用）"""
+        self.cursor.execute(sql)
+        return list(self.cursor.fetchall())
 

@@ -25,7 +25,9 @@ sentence-transformers>=2.5  # BGE-M3 本地 CPU Embedding
 modelscope>=1.10       # 魔搭社区模型下载
 
 # --- Validation ---
+python-dotenv>=1.0
 pydantic>=2.5
+pymysql>=1.1
 
 # --- Async HTTP ---
 httpx>=0.25
