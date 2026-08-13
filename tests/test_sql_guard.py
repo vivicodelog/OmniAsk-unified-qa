@@ -49,8 +49,18 @@ class TestSqlGuard:
         assert ok is True
     
     def test_check_table_whitelist(self,guard):
-        """不允许查询表"""  
+        """不允许查询表"""
         ok, msg = guard._check_table_whitelist("SELECT * FROM users")
+        assert ok is False
+
+    def test_backtick_table_allowed(self, guard):
+        """反引号包裹的表名也能正确识别（白名单内）"""
+        ok, msg = guard.validate("SELECT * FROM `orders`")
+        assert ok is True
+
+    def test_backtick_table_whitelist_rejected(self, guard):
+        """反引号表名不在白名单 → 拒绝，不绕过白名单"""
+        ok, msg = guard._check_table_whitelist("SELECT * FROM `users`")
         assert ok is False
 
     def test_check_union(self,guard):

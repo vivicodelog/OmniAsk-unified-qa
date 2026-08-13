@@ -6,6 +6,9 @@ SQL 安全校验 —— 白名单机制。
 import re
 from dataclasses import dataclass, field
 
+# 表名可能被反引号包裹（如 `qa_0`），\w 匹配不到反引号，需专门处理
+_TABLE_RE = re.compile(r"(?:FROM|JOIN)\s+(?:`([^`]+)`|([^\s`]+))", re.IGNORECASE)
+
 
 @dataclass
 class SQLGuard:
@@ -67,9 +70,13 @@ class SQLGuard:
                 return False, "不允许多语句"
         return True, "OK"
 
+    @staticmethod
+    def _extract_tables(sql: str) -> list[str]:
+        """提取 FROM/JOIN 后的表名，支持反引号包裹（如 `qa_0`）。"""
+        return [a or b for a, b in _TABLE_RE.findall(sql)]
+
     def _check_table_whitelist(self, sql: str) -> tuple[bool, str]:
-        tables = re.findall(r"(?:FROM|JOIN)\s+(\w+)", sql, re.IGNORECASE)
-        for table_name in tables:
+        for table_name in self._extract_tables(sql):
             if table_name not in self.allowed_tables:
                 return False, f"不允许查询表 {table_name}"
         return True, "OK"
@@ -78,7 +85,7 @@ class SQLGuard:
     def _check_union(self, sql: str) -> tuple[bool, str]:
         parts = re.split(r'\bUNION\b', sql, flags=re.IGNORECASE)#正则表达式永远加 r
         for i, part in enumerate(parts):
-            tables = re.findall(r"(?:FROM|JOIN)\s+(\w+)", part, re.IGNORECASE)
+            tables = self._extract_tables(part)
             if not tables:
                 return False, f"第 {i+1} 段 SELECT 缺少表名"
             for t in tables:
