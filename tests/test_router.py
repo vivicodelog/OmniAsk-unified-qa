@@ -5,7 +5,6 @@
 from fastapi.testclient import TestClient
 from backend import file_router
 from backend.main import app
-from backend.schemas import ColumnMeta, ColumnType
 
 client = TestClient(app)  # 把 app 包一层，发请求不走网络
 
@@ -46,21 +45,16 @@ def test_chat_session_not_found():
     assert response.status_code == 200
     assert response.json()["error"] == "会话不存在"
 def test_chat():
-    session_id, ctx = file_router._new_session()   
+    session_id, ctx = file_router._new_session()
     ctx.agent.run = lambda question, schema, db, guard: {
-        "sql": "SELECT 1",
-        "data": [{"产品": "A", "销量": 100}],
+        "sql": "SELECT 产品, SUM(销量) FROM qa_test_0 GROUP BY 产品",
+        "data": [{"产品": "A", "销量": 100}, {"产品": "B", "销量": 200}],
         "success": True,
     }
 
-    # 给 chart_selector 喂列数据
-    ctx.tables["qa_test_0"] = [
-        ColumnMeta(name="产品", dtype=ColumnType.STRING),
-        ColumnMeta(name="销量", dtype=ColumnType.INTEGER),
-    ]
     response = client.post("/api/chat", json={
         "session_id": session_id,
         "question": "各产品销量占比是多少",
     })
-    assert response.json()["sql"] == "SELECT 1"
+    assert response.json()["sql"] == "SELECT 产品, SUM(销量) FROM qa_test_0 GROUP BY 产品"
     assert response.json()["chart_type"] == "pie"

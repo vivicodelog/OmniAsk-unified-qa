@@ -3,8 +3,9 @@
 from fastapi import APIRouter
 
 from backend.file_router import build_schema, get_session
-from backend.schemas import ChatRequest
+from backend.schemas import ChatRequest, ColumnMeta
 from backend.chart_selector import select
+from backend.util.infer_dtype import infer_dtype
 router = APIRouter()                      
 
 @router.post("/chat")
@@ -16,10 +17,13 @@ async def chat(request: ChatRequest):
     result = ctx.agent.run(request.question, schema, ctx.db, ctx.guard)
     if not result["success"]:
         return {"error": result.get("error", "SQL生成失败")}
-    all_columns = []
-    for columns in ctx.tables.values():  # 获取所有表的结构
-        all_columns.extend(columns)
-    chart_type = select(request.question, all_columns)
+    columns = []
+    if result["data"]:
+        keys = result["data"][0].keys()
+        for key in keys:
+            samples = [row[key] for row in result["data"]]
+            columns.append(ColumnMeta(name=key, dtype=infer_dtype(samples)))
+    chart_type = select(request.question, columns, result["sql"])
     return {
         "sql": result["sql"],
         "data": result["data"],
