@@ -4,6 +4,18 @@
 // ============================================================
 
 import { ref, computed } from 'vue'
+// ECharts 按需引入（tree-shaking，只打包用到的图表类型）
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { PieChart, LineChart, BarChart, ScatterChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import VChart from 'vue-echarts'
+
+use([
+  CanvasRenderer,
+  PieChart, LineChart, BarChart, ScatterChart,
+  GridComponent, TooltipComponent, LegendComponent,
+])
 
 // === Props ===
 const props = defineProps<{
@@ -14,15 +26,74 @@ const props = defineProps<{
 
 // === 状态 ===
 const sqlVisible = ref(false)
-const chartRef = ref<HTMLDivElement | null>(null)
 
 // === 计算属性 ===
 const columnKeys = computed(() => {
-  // 根据 data 返回列名数组
   if (props.data.length === 0) return []
   return Object.keys(props.data[0])
 })
 
+// 数据 → ECharts option 的映射。
+// 约定：查询结果第一列是「分类/名称」，第二列是「数值」。
+// 这符合后端 NL2SQL 生成 GROUP BY 查询的常见形态（如 `SELECT 地区, SUM(销售额)`）。
+const option = computed(() => {
+  if (!props.data?.length) return null
+  const keys = Object.keys(props.data[0])
+  const labelKey = keys[0]
+  const valueKey = keys[1] ?? keys[0]   // 只有一列时退化，仍能画
+
+  const labels = props.data.map(r => r[labelKey])
+  const values = props.data.map(r => r[valueKey])
+
+  switch (props.chartType) {
+    case 'pie':
+      return {
+        tooltip: { trigger: 'item' },
+        legend: { bottom: 0 },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '68%'],
+          center: ['50%', '45%'],
+          data: props.data.map(r => ({ name: r[labelKey], value: r[valueKey] })),
+          label: { formatter: '{b}: {d}%' },
+        }],
+      }
+
+    case 'line':
+      return {
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: labels, boundaryGap: false },
+        yAxis: { type: 'value' },
+        series: [{ type: 'line', data: values, smooth: true, areaStyle: { opacity: 0.08 } }],
+      }
+
+    case 'bar':
+      return {
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: labels, axisLabel: { interval: 0, rotate: labels.length > 6 ? 30 : 0 } },
+        yAxis: { type: 'value' },
+        series: [{ type: 'bar', data: values, barMaxWidth: 40 }],
+      }
+
+    case 'scatter':
+      return {
+        tooltip: { trigger: 'item' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'value', name: labelKey },
+        yAxis: { type: 'value', name: valueKey },
+        series: [{
+          type: 'scatter',
+          data: props.data.map(r => [r[labelKey], r[valueKey]]),
+          symbolSize: 10,
+        }],
+      }
+
+    default: // "table" 或未知类型 → 不画图，只展示下方表格
+      return null
+  }
+})
 
 // === 方法 ===
 function toggleSql() {
@@ -41,8 +112,14 @@ function toggleSql() {
     </div>
 
     <!-- 图表区 -->
-    <div class="chart-container" ref="chartRef">
-      <!-- ECharts 渲染到这里 -->
+    <div class="chart-container">
+      <VChart
+        v-if="option"
+        class="chart"
+        :option="option"
+        autoresize
+      />
+      <div v-else class="chart-empty">表格型结果，见下方数据</div>
     </div>
 
     <!-- 结果表格 -->
@@ -88,6 +165,15 @@ function toggleSql() {
   background: var(--n-color);
   border: 1px solid var(--n-border-color);
   border-radius: var(--n-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.chart { width: 100%; height: 100%; }
+.chart-empty {
+  font-size: 13px;
+  color: var(--n-text-color-2);
 }
 .result-table {
   margin-top: 8px;
