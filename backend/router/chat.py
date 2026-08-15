@@ -16,7 +16,9 @@ async def chat(request: ChatRequest):
     schema = build_schema(request.session_id)
     result = ctx.agent.run(request.question, schema, ctx.db, ctx.guard)
     if not result["success"]:
-        return {"error": result.get("error", "SQL生成失败")}
+        if result.get("need_clarify"):
+            return {"need_clarify": True, "question": result["question"]}
+        return {"error": result.get("error", "SQL生成失败")}    
     columns = []
     if result["data"]:
         keys = result["data"][0].keys()

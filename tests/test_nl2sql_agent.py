@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from typing import cast
 
 import pytest
 
@@ -109,3 +110,52 @@ class TestRunWithMock:
             assert result["success"] is True
             assert result["sql"] == "SELECT name FROM people WHERE city = 'New York'"
 
+class TestSummarize:
+    def test_empty(self):
+        assert NL2SQLAgent._summarize([]) == "空结果"
+    def test_small(self):
+        assert NL2SQLAgent._summarize([{"a": 1}, {"a": 2}]) == "[{'a': 1}, {'a': 2}]"
+    def test_large(self):
+        rows = [{"a": i} for i in range(15)]
+        out = NL2SQLAgent._summarize(rows)
+        assert "共 15 行" in out and "..." in out
+
+class TestHistory:
+    TABLE = "people"
+
+    @pytest.fixture(autouse=True)
+    def setup(self, db):
+        columns = [
+            ColumnMeta(name="id", dtype=ColumnType.INTEGER),
+            ColumnMeta(name="name", dtype=ColumnType.STRING),
+            ColumnMeta(name="city", dtype=ColumnType.STRING),
+        ]
+        db.create_table(self.TABLE, columns)
+        db.insert_rows(self.TABLE, [{"id": 1, "name": "Alice", "city": "New York"}])
+        yield
+        db.drop_table(self.TABLE)
+    def test_appended_after_run(self, db, guard):
+        agent = NL2SQLAgent()
+        with patch.object(agent, '_call_llm', return_value="SELECT name FROM people WHERE city = 'New York'"):
+            agent.run("查找纽约的人", "表 people(...)", db, guard)
+            assert len(agent.history) == 2
+    def test_trimmed_to_5_turns(self, db, guard):
+        agent = NL2SQLAgent()
+        with patch.object(agent, '_call_llm', return_value="SELECT name FROM people WHERE city = 'New York'"):
+            for i in range(6):
+                agent.run(f"问题{i}", "表 people(...)", db, guard)
+            assert len(agent.history) == 10   # 5 轮 × 2 条
+
+class TestClarify:
+    def test_need_clarify(self, db, guard):
+        agent = NL2SQLAgent()
+        with patch.object(agent, '_call_llm', return_value="需要澄清：你指的是哪个产品？"):
+            result = agent.run("那它的库存呢", "表 people(...)", db, guard)
+            assert result["success"] is False
+            assert result["need_clarify"] is True
+            assert result["question"] == "你指的是哪个产品？"
+    def test_clarify_recorded_in_history(self, db, guard):
+        agent = NL2SQLAgent()
+        with patch.object(agent, '_call_llm', return_value="需要澄清：你指的是哪个？"):
+            agent.run("那它的库存呢", "表 people(...)", db, guard)
+            assert any(cast(str, m.get("content")).startswith("需要澄清") for m in agent.history)

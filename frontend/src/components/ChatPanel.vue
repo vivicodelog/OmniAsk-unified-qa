@@ -30,14 +30,19 @@ async function handleSend() {
   loading.value = true
   try {
     const data = await chat(props.sessionId, q)
-    // 3. AI 消息上屏
+    if (data.need_clarify) {
+      // 反问上屏，等用户在输入框回答
+      messages.value.push({ role: 'ai', content: data.question, isClarify: true })
+      return
+    }
     messages.value.push({
       role: 'ai',
-      content: data.sql,       // 先展示 SQL，v2 再改成自然语言
+      content: data.sql,
       sql: data.sql,
       data: data.data,
       chartType: data.chart_type,
     })
+
   } catch (e: any) {
     messages.value.push({ role: 'ai', content: `出错了：${e.message}` })
   } finally {

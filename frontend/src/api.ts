@@ -25,10 +25,13 @@ export function uploadFile(file: File): Promise<{
 
 // === 发送问题 ===
 export function chat(sessionId: string, question: string): Promise<{
-  sql: string
+  question: any          // 反问问题，命名容易和请求参数 question 混
+  need_clarify: any      // 应是 boolean
+  sql: string            // need_clarify 时这三个字段其实没有
   data: any[]
   chart_type: string
-}> {
+}>
+ {
   return request('/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

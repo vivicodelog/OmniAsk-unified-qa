@@ -12,6 +12,7 @@ import ChatPanel from '../components/ChatPanel.vue'
 const sessionId = ref('')
 const uploadedFile = ref<any>(null)
 const activeSheet = ref('')
+const uploading = ref(false)
 
 
 // === 计算属性 ===
