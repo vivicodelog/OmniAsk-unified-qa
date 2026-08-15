@@ -5,7 +5,9 @@ pytest fixtures —— 自动生成测试数据文件，不依赖外部二进制
 import tempfile
 import time
 from pathlib import Path
+from typing import Iterator
 
+import pymupdf
 import pytest
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -27,7 +29,7 @@ def _safe_unlink(path: str) -> None:
 
 
 @pytest.fixture
-def sample_xlsx_path() -> str:
+def sample_xlsx_path() -> Iterator[str]:
     """生成一个多 sheet 的 Excel 文件，覆盖所有列类型 + 合并单元格。
 
     Sheet "销售订单" 列：
@@ -145,7 +147,7 @@ def sample_xlsx_path() -> str:
 
 
 @pytest.fixture
-def sample_csv_path() -> str:
+def sample_csv_path() -> Iterator[str]:
     """生成一个 CSV 测试文件。"""
     content = (
         "产品,销量,单价,日期,上架\n"
@@ -158,5 +160,27 @@ def sample_csv_path() -> str:
     tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w", encoding="utf-8")
     tmp.write(content)
     tmp.close()
+    yield tmp.name
+    _safe_unlink(tmp.name)
+
+
+@pytest.fixture
+def sample_pdf_path() -> Iterator[str]:
+    """生成一个含文本 + 图片的 PDF 测试文件（1 页）。"""
+    doc = pymupdf.open()                # 新建空文档
+    page = doc.new_page()               # 加一页（A4）
+
+    # 插文本：中文必须 fontname="china-s"（内置 CJK 字体），默认 Helvetica 不支持中文
+    page.insert_text((72, 72), "Hello 测试文本", fontname="china-s")
+
+    # 插图片：Pixmap 现场造一张 10x10 纯灰图，不依赖外部图片文件
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 10, 10), False)
+    pix.clear_with(200)
+    page.insert_image(pymupdf.Rect(100, 100, 200, 200), pixmap=pix)
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp.close()
+    doc.save(tmp.name)
+    doc.close()
     yield tmp.name
     _safe_unlink(tmp.name)

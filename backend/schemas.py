@@ -63,6 +63,41 @@ class ParseResult(BaseModel):
 
 
 # ============================================================
+# PDF 解析结果（v2 多模态链路）
+# ============================================================
+
+class PdfTextBlock(BaseModel):
+    """一段文本块 —— 供 text_retriever 转向量检索，供 SourceTrace 溯源高亮。"""
+    page: int                                # 页码，统一 1-based（和 PDF 阅读器显示一致）
+    text: str                                # 文本内容
+    bbox: tuple[float, float, float, float]  # (x0,y0,x1,y1) 左上右下坐标，高亮的命门
+
+
+class PdfTable(BaseModel):
+    """一张表 —— 结构化数据，前端可直接渲染成 <table>。"""
+    page: int
+    bbox: tuple[float, float, float, float]
+    rows: list[list[str]]  # 二维数组，第一行通常是表头
+
+
+class PdfImage(BaseModel):
+    """一张图片 —— 喂给 vision_agent（Qwen-VL）做看图问答。"""
+    page: int
+    bbox: tuple[float, float, float, float]
+    data: bytes                              # 图片字节（PNG/JPEG），直接喂多模态 API
+    ext: str                                 # 扩展名，写文件/存库时用
+
+
+class PdfParseResult(BaseModel):
+    """一次 PDF 解析的完整结果 —— 三类产出 + 元信息。"""
+    file_name: str
+    page_count: int = 0
+    text_blocks: list[PdfTextBlock] = Field(default_factory=list)
+    tables: list[PdfTable] = Field(default_factory=list)
+    images: list[PdfImage] = Field(default_factory=list)
+    
+ 
+# ============================================================
 # API 请求 / 响应（预留，Day 1 不用）
 # ============================================================
 
