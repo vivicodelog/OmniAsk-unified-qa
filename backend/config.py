@@ -23,7 +23,7 @@ QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compa
 # --- 模型名称 ---
 DEEPSEEK_MODEL = "deepseek-chat"          # 文本 LLM
 QWEN_VL_MODEL = "qwen-vl-plus"            # 多模态 LLM（阿里云百炼）
-EMBEDDING_MODEL = "BAAI/bge-m3"           # 本地 Embedding（ModelScope 下载）
+EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"           # 本地 Embedding（ModelScope 下载）
 
 # --- 文件上传限制 ---
 MAX_FILE_SIZE_MB = 50

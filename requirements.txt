@@ -19,7 +19,7 @@ pdfplumber>=0.10       # PDF 表格检测
 
 # --- AI / LLM ---
 langchain>=0.1
-chromadb>=0.4          # 向量库（本地持久化）
+chromadb==1.5.9        # 向量库（本地持久化，固定版本防漂移）
 openai>=1.0            # DeepSeek API 兼容 OpenAI 格式
 sentence-transformers>=2.5  # BGE-M3 本地 CPU Embedding
 modelscope>=1.10       # 魔搭社区模型下载

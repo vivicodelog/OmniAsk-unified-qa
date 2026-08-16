@@ -42,3 +42,6 @@ coverage.xml
 *.log
 *.tmp
 data/uploads/
+
+# === 生成数据（不提交） ===
+data/chroma_db/

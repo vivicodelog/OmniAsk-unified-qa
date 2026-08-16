@@ -57,6 +57,7 @@ class PdfParser:
                         rows=rows,
                     ))
         return tables
+
     
     @staticmethod
     def _extract_images(doc: pymupdf.Document) -> list[PdfImage]:
@@ -75,6 +76,7 @@ class PdfParser:
                         ext=ext,
                     ))
         return images
+    
     
     @staticmethod
     def parse(path: str | Path) -> PdfParseResult:
