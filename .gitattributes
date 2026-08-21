@@ -1,0 +1,25 @@
+# 换行符统一为 LF（仓库内 + 工作区都是）。
+# 写在这里而不是靠 core.autocrlf：.gitattributes 随仓库走，谁 clone 都生效；
+# core.autocrlf 是本地配置，换台机器/换个人就失效，是行尾混乱的根源。
+* text=auto eol=lf
+
+# 例外：Windows 批处理必须 CRLF，否则 cmd.exe 解析报错
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制：禁止任何行尾转换，否则文件会被改坏
+*.xlsx  binary
+*.xls   binary
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.zip   binary
+
+# lock 文件是生成物：不参与 diff、不计入语言统计
+frontend/package-lock.json  -diff linguist-generated
