@@ -45,3 +45,5 @@ data/uploads/
 
 # === 生成数据（不提交） ===
 data/chroma_db/
+# gen_test_files.py 的默认输出目录
+data/samples/

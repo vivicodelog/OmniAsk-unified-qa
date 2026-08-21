@@ -1,8 +1,18 @@
-"""生成桌面测试文件：Excel / CSV，覆盖日期、布尔、多 sheet 等场景。"""
-import pandas as pd
+"""生成测试文件：Excel / CSV，覆盖日期、布尔、多 sheet 等场景。
+
+用法：
+    python data/gen_test_files.py            # 默认输出到 data/samples/
+    python data/gen_test_files.py ~/Desktop  # 指定输出目录
+"""
+import sys
 from pathlib import Path
 
-DESKTOP = Path(r"C:\Users\张慧\Desktop")
+import pandas as pd
+
+# 输出目录取命令行参数，缺省落在仓库内，避免硬编码某台机器的桌面路径
+OUT_DIR = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path(__file__).parent / "samples"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+DESKTOP = OUT_DIR  # 下方沿用原变量名，少改几处
 
 # ------------------------------------------------------------
 # 1. 销售数据.xlsx —— 含日期、地区、品类、数值（测折线/饼/柱图）
