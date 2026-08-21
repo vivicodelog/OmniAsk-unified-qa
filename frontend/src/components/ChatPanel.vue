@@ -3,21 +3,35 @@
 // ChatPanel — 对话面板。消息列表 + 输入框。
 // ============================================================
 
-import { ref } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 import ChartPanel from './ChartPanel.vue'
 
-import { chat } from '../api'
+import { chat, type SourceHit } from '../api'
 // === Props ===
 const props = defineProps<{
   sessionId: string
 }>()
 // === Emits ===
+const emit = defineEmits<{
+  sources: [sources: SourceHit[]]  // 文字答案的溯源坐标，交给父组件转给 PdfViewer 高亮
+}>()
 
 // === 状态 ===
 const messages = ref<any[]>([])
 const question = ref('')
 const loading = ref(false)
 const scrollRef = ref<HTMLDivElement | null>(null)
+
+// === 自动滚动：新消息上屏后滚到底部 ===
+function scrollToBottom() {
+  nextTick(() => {
+    if (scrollRef.value) {
+      scrollRef.value.scrollTop = scrollRef.value.scrollHeight
+    }
+  })
+}
+// 消息数变化（用户消息 / AI 回答 / 错误 / 反问）都触发滚动，一处监听覆盖所有 push 点
+watch(() => messages.value.length, scrollToBottom)
 
 // === 方法 ===
 async function handleSend() {
@@ -30,18 +44,28 @@ async function handleSend() {
   loading.value = true
   try {
     const data = await chat(props.sessionId, q)
-    if (data.need_clarify) {
-      // 反问上屏，等用户在输入框回答
-      messages.value.push({ role: 'ai', content: data.question, isClarify: true })
-      return
+    // 统一判别字段 answer_type 分支（discriminated union，TS 可靠收窄）
+    switch (data.answer_type) {
+      case 'clarify':   // 反问：指代不明，让用户澄清
+        messages.value.push({ role: 'ai', content: data.question, isClarify: true })
+        return
+      case 'error':     // 错误：后端 200 + error 字段（不是 HTTP 异常，得在这里接住）
+        messages.value.push({ role: 'ai', content: data.error, isError: true })
+        return
+      case 'text':      // 文字答案：PDF 多模态链路
+        messages.value.push({ role: 'ai', content: data.answer })
+        emit('sources', data.sources)
+        return
+      case 'chart':     // 图表答案：Excel NL2SQL 链路
+        messages.value.push({
+          role: 'ai',
+          content: data.sql,
+          sql: data.sql,
+          data: data.data,
+          chartType: data.chart_type,
+        })
+        return
     }
-    messages.value.push({
-      role: 'ai',
-      content: data.sql,
-      sql: data.sql,
-      data: data.data,
-      chartType: data.chart_type,
-    })
 
   } catch (e: any) {
     messages.value.push({ role: 'ai', content: `出错了：${e.message}` })
@@ -62,7 +86,7 @@ async function handleSend() {
       </div>      
       <div v-for="(msg, i) in messages" :key="i"
            :class="['msg', msg.role]">
-        <div class="bubble">{{ msg.content }}</div>
+        <div class="bubble" :class="{ 'is-error': msg.isError }">{{ msg.content }}</div>
         <ChartPanel
           v-if="msg.chartType"
           :chart-type="msg.chartType"
@@ -125,6 +149,7 @@ async function handleSend() {
 .msg.ai .bubble {
   background: var(--n-color); border: 1px solid var(--n-border-color); border-bottom-left-radius: 4px;
 }
+.msg.ai .bubble.is-error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
 .msg .typing { animation: blink 1.4s infinite; }
 @keyframes blink { 0%,100%{opacity:.2} 50%{opacity:1} }
 

@@ -6,30 +6,40 @@
 import { ref, computed } from 'vue'
 import FileUploader from '../components/FileUploader.vue'
 import DataPreview from '../components/DataPreview.vue'
+import PdfViewer from '../components/PdfViewer.vue'
 import ChatPanel from '../components/ChatPanel.vue'
+import type { UploadResult, SheetPreview, SourceHit } from '../api'
 
 // === 状态 ===
 const sessionId = ref('')
-const uploadedFile = ref<any>(null)
+const uploadedFile = ref<UploadResult | null>(null)
 const activeSheet = ref('')
-const uploading = ref(false)
-
+const sources = ref<SourceHit[]>([])
 
 // === 计算属性 ===
-const sheets = computed(() => {
-  return uploadedFile.value?.sheets ?? []  
+// 靠 file_type 判别：pdf 走 PdfViewer，否则走 DataPreview
+const isPdf = computed(() => uploadedFile.value?.file_type === 'pdf')
+
+const sheets = computed<SheetPreview[]>(() => {
+  const f = uploadedFile.value
+  return f && f.file_type !== 'pdf' ? f.sheets : []
 })
 
 // === 方法 ===
-function handleUploaded(result: any) {
+function handleUploaded(result: UploadResult) {
   sessionId.value = result.session_id
   uploadedFile.value = result
-  activeSheet.value = result.sheets?.[0]?.name ?? ''
+  // PDF 没有 sheet 概念，清空；Excel 默认选中第一个 sheet
+  activeSheet.value = result.file_type !== 'pdf' ? result.sheets[0]?.name ?? '' : ''
+  sources.value = []   // 换文件清空旧高亮
 }
-
 
 function handleSelectSheet(sheetName: string) {
   activeSheet.value = sheetName
+}
+
+function handleSources(s: SourceHit[]) {
+  sources.value = s
 }
 
 </script>
@@ -43,8 +53,14 @@ function handleSelectSheet(sheetName: string) {
         @uploaded="handleUploaded"
       />
 
-      <div class="section-title">📊 数据预览</div>
+      <div class="section-title">{{ isPdf ? '📄 PDF 预览' : '📊 数据预览' }}</div>
+      <PdfViewer
+        v-if="isPdf"
+        :session-id="sessionId"
+        :sources="sources"
+      />
       <DataPreview
+        v-else
         :sheets="sheets"
         :active-sheet="activeSheet"
         @select-sheet="handleSelectSheet"
@@ -55,6 +71,7 @@ function handleSelectSheet(sheetName: string) {
     <main class="right-panel">
       <ChatPanel
         :session-id="sessionId"
+        @sources="handleSources"
       />
     </main>
   </div>

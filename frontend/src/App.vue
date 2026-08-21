@@ -9,7 +9,7 @@ import QaView from './views/QaView.vue'
   <div class="app-shell">
     <header class="top-bar">
       <span class="logo">🧠 Unified QA</span>
-      <span class="badge">v1</span>
+      <span class="badge">v2</span>
     </header>
     <QaView />
   </div>
