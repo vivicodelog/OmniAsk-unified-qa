@@ -29,7 +29,8 @@ class TestFileRouter:
         result = route("data/sample_sales.csv", new_session_id)
         assert result[0].file_type == "csv"
     def test_upload_pdf(self) -> str|None:
-        with pytest.raises(ValueError, match="PDF 解析暂未实现"):
+        # PDF 已接入 PdfParser，不存在的路径由解析器兜底报错（而非「类型不支持」）
+        with pytest.raises(FileNotFoundError):
             route("xxx.pdf")
     def test_upload_unknown(self) -> str|None:
         with pytest.raises(ValueError, match="不支持的文件类型"):

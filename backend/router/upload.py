@@ -3,7 +3,9 @@
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File
-from backend.file_router import route as route_file
+from fastapi.responses import FileResponse
+from backend.file_router import route as route_file, get_session
+from backend.schemas import PdfParseResult
 
 router = APIRouter()                                   
 UPLOAD_DIR = Path("data/uploads")
@@ -20,7 +22,15 @@ async def upload_file(file: UploadFile = File(...)):
 
     # 2. 解析 + 建表
     result, session_id = route_file(str(save_path))
-
+    # 3. 返回：PDF 和 Excel 的预览结构不同
+    if isinstance(result, PdfParseResult):
+        return {
+            "session_id": session_id,
+            "file_type": "pdf",
+            "page_count": result.page_count,
+            "text_blocks": len(result.text_blocks),
+            "images": len(result.images),
+        }
     # 3. 返回
     return {
         "session_id": session_id,
@@ -35,3 +45,13 @@ async def upload_file(file: UploadFile = File(...)):
             for s in result.sheets
         ],
     }
+
+
+@router.get("/file/{session_id}")
+async def get_file(session_id: str):
+    """返回会话原始文件字节流 —— 前端 PDF 预览（vue-pdf-embed）拿 PDF 本体用。"""
+    ctx = get_session(session_id)
+    if not ctx or ctx.file_path is None:
+        return {"error": "文件不存在"}
+    # 不传 filename：避免触发浏览器下载，让 application/pdf inline 渲染
+    return FileResponse(ctx.file_path, media_type="application/pdf")

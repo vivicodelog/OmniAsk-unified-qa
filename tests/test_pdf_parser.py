@@ -47,3 +47,26 @@ class TestPdfParser:
         """文件不存在时抛出 FileNotFoundError。"""
         with pytest.raises(FileNotFoundError):
             PdfParser.parse("nonexistent_file.pdf")
+
+    def test_is_heading_judgment(self):
+        """标题判定：字号大、或单行加粗 → 标题；正文/多行加粗 → 不是。"""
+        assert PdfParser._is_heading(14.0, 10.0, False, 3) is True   # 字号明显大
+        assert PdfParser._is_heading(10.0, 10.0, True, 1) is True    # 单行加粗
+        assert PdfParser._is_heading(10.0, 10.0, False, 3) is False  # 正文
+        assert PdfParser._is_heading(10.0, 10.0, True, 3) is False   # 多行加粗
+
+    def test_extract_text_filters_heading(self, tmp_path):
+        """标题（大字号）被过滤，正文（正文字号）保留。"""
+        import pymupdf
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "附录：各产品线明细", fontname="china-s", fontsize=16)
+        page.insert_text((72, 120), "这是正文内容测试文本", fontname="china-s", fontsize=11)
+        path = tmp_path / "heading.pdf"
+        doc.save(str(path))
+        doc.close()
+
+        result = PdfParser.parse(str(path))
+        texts = [b.text for b in result.text_blocks]
+        assert any("正文" in t for t in texts)
+        assert not any("附录" in t for t in texts)

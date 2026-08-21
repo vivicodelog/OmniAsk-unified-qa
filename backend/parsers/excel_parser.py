@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -125,7 +125,7 @@ class ExcelParser:
 
         # 采样（大文件只取前 MAX_SAMPLE_ROWS 做类型推断）
         sample_df = df.head(MAX_SAMPLE_ROWS)
-        rows: list[dict[str, Any]] = sample_df.to_dict(orient="records")
+        rows: list[dict[str, Any]] = cast(list[dict[str, Any]], sample_df.to_dict(orient="records"))
 
         columns = ExcelParser._infer_column_types(rows, headers)
 
